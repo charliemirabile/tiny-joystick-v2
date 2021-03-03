@@ -5,9 +5,12 @@ ASFLAGS = $(CFLAGS)
 
 OBJS = main.o usbconfig.o usbdrv/usbdrv.o usbdrv/usbdrvasm.o
 
-.PHONY: all clean
+.PHONY: all clean flash
 
 all: main.hex
+
+flash: all
+	avrdude -c usbtiny -p attiny85 -B10 -U flash:w:main.hex:i
 
 main.hex: main.bin
 	avr-objcopy -j .text -j .data -O ihex $^ $@
