@@ -1,4 +1,5 @@
 #include <util/delay.h>
+#include <avr/interrupt.h>
 #include "usbdrv/usbdrv.h"
 
 typedef enum
@@ -73,6 +74,7 @@ int main(void)
 	usbDeviceConnect();
 
 	usbInit();
+	sei();
 
 	uchar last_pos = CENTER;
 
