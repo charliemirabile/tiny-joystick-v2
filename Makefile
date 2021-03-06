@@ -16,7 +16,7 @@ main.hex: main.bin
 	avr-objcopy -j .text -j .data -O ihex $^ $@
 
 main.bin: $(OBJS)
-	$(CC) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^
 
 clean:
 	-rm $(OBJS) main.hex main.bin
