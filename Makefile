@@ -1,22 +1,35 @@
+DEVICE = attiny85
+PROGRAMMER = usbtiny
+
 CC = avr-gcc
-CFLAGS = -Wall -Wextra -Wpedantic -O2 -mmcu=attiny85 -DF_CPU=16500000
+CFLAGS = -Wall -Wextra -Wpedantic -O2 -mmcu=$(DEVICE) -DF_CPU=16500000
 AS = arv-gcc
 ASFLAGS = $(CFLAGS)
+AVRDUDE = arvdude
+AVRFLAGS = -c $(PROGRAMMER) -p $(DEVICE) -B10
 
 OBJS = main.o usbconfig.o usbdrv/usbdrv.o usbdrv/usbdrvasm.o
 
-.PHONY: all clean flash
+.PHONY: all program flash eeprom clean
 
-all: main.hex
+all: main.bin
 
-flash: all
-	avrdude -c usbtiny -p attiny85 -B10 -U flash:w:main.hex:i
+program: flash eeprom
 
+flash: main.hex
+	$(AVRDUDE) $(AVRFLAGS) -U $@:w:$^:i
+
+eeprom: main.eep
+	$(AVRDUDE) $(AVRFLAGS) -U $@:w:$^:i
+	
 main.hex: main.bin
 	avr-objcopy -j .text -j .data -O ihex $^ $@
+
+main.eep: main.bin
+	avr-objcopy -j .eeprom --change-section-lma .eeprom=0 -O ihex $^ $@
 
 main.bin: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
 
 clean:
-	-rm $(OBJS) main.hex main.bin
+	-rm $(OBJS) main.bin main.hex main.eep
