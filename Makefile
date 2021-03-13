@@ -10,11 +10,14 @@ AVRFLAGS = -c $(PROGRAMMER) -p $(DEVICE) -B10
 
 OBJS = main.o usbconfig.o usbdrv/usbdrv.o usbdrv/usbdrvasm.o
 
-.PHONY: all program flash eeprom clean
+.PHONY: all program fuses flash eeprom clean
 
 all: main.bin
 
 program: flash eeprom
+
+fuses:
+	$(AVRDUDE) $(AVRFLAGS) -U hfuse:w:0xd7:m -U lfuse:w:0xe1:m
 
 flash: main.hex
 	$(AVRDUDE) $(AVRFLAGS) -U $@:w:$^:i
