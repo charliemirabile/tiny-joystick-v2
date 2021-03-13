@@ -17,7 +17,7 @@ all: main.bin
 program: flash eeprom
 
 fuses:
-	$(AVRDUDE) $(AVRFLAGS) -U hfuse:w:0xd7:m -U lfuse:w:0xf1:m
+	$(AVRDUDE) $(AVRFLAGS) -U hfuse:w:0xD7:m -U lfuse:w:0xE1:m
 
 flash: main.hex
 	$(AVRDUDE) $(AVRFLAGS) -U $@:w:$^:i
