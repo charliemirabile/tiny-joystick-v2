@@ -12,14 +12,17 @@
 
 #include "usbdrv/usbdrv.h"
 
+_Bool toggle=0;
 
 void usbFunctionWriteOut(uchar * data, uchar len)
 {
-
+	if(data[0]=0x0B && data[1]==0xB0 && data[2]==100 && data[3]==100)
+		toggle=1;
 }
 
 void main(void)
 {
+	_Bool blast = 1;
 	wdt_disable();
 
 	usbDeviceDisconnect();
@@ -39,7 +42,13 @@ void main(void)
 		usbPoll();
 		if(usbInterruptIsReady())
 		{
-			usbSetInterrupt((uchar[]){0x09,0x90,42,42},4);
+			if(toggle)
+			{
+				toggle=0;
+				blast = !blast;
+			}
+			if(blast)
+				usbSetInterrupt((uchar[]){0x09,0x90,42,42},4);
 		}
 	}
 }
