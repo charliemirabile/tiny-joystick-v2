@@ -12,11 +12,6 @@
 
 #include "usbdrv/usbdrv.h"
 
-
-
-
-
-
 //uchar note = 0;
 
 typedef union
@@ -82,15 +77,6 @@ config_loc;
 #define CHAN_PRESS 0xD
 #define PITCH_BEND 0xE
 #define NO_MSG 0xF
-
-
-
-static union
-{
-	uchar lookup_table[8][4];
-	uchar bytes[32];
-}
-current_prog = {.bytes = {0}};
 
 void change_program(uchar prog)
 {
@@ -278,16 +264,6 @@ midimsg;
 
 
 
-midimsg lookuptable[] = {
-	(midimsg){.codeindex=0xB, .channel=0, .msg_type=0xB, .controller=100, .value=100},
-	(midimsg){.codeindex=0xB, .channel=0, .msg_type=0xB, .controller=101, .value=100},
-	(midimsg){.codeindex=0xB, .channel=0, .msg_type=0xB, .controller=102, .value=100},
-	(midimsg){.codeindex=0xB, .channel=0, .msg_type=0xB, .controller=103, .value=100},
-	(midimsg){.codeindex=0xB, .channel=0, .msg_type=0xB, .controller=100, .value=0},
-	(midimsg){.codeindex=0xB, .channel=0, .msg_type=0xB, .controller=101, .value=0},
-	(midimsg){.codeindex=0xB, .channel=0, .msg_type=0xB, .controller=102, .value=0},
-	(midimsg){.codeindex=0xB, .channel=0, .msg_type=0xB, .controller=103, .value=0},
-};
 
 
 /*
