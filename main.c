@@ -303,9 +303,6 @@ int main(void)
 //////// Main ////////////
 void main(void)
 {
-	_Bool mode = 0;
-	uchar prog = 0;
-	uchar last_pos = CENTER;
 	wdt_disable();
 
 	usbDeviceDisconnect();
@@ -320,6 +317,29 @@ void main(void)
 	usbInit();
 	sei();
 	ADCSRA = 1 << ADEN | 0b110; //enable ADC and set prescaler to 6 (divide by 64)
+
+	_Bool mode = 0;
+	uchar prog = 0;
+	uchar last_pos = get_pos();
+	switch(last_pos)
+	{
+	case UP:
+		change_program(0);
+		mode = 1;
+		break;
+	case CENTER:
+		change_program(0);
+		break;
+	case LEFT:
+		change_program(1);
+		break;
+	case DOWN:
+		change_program(2);
+		break;
+	case RIGHT:
+		change_program(3);
+		break;
+	}
 
 	for(;;)
 	{		
