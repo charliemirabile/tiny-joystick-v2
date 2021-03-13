@@ -14,7 +14,7 @@ OBJS = main.o usbconfig.o usbdrv/usbdrv.o usbdrv/usbdrvasm.o
 
 all: main.bin
 
-program: flash eeprom
+program: fuses flash eeprom
 
 fuses:
 	$(AVRDUDE) $(AVRFLAGS) -U hfuse:w:0xD7:m -U lfuse:w:0xE1:m
