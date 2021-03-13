@@ -5,7 +5,7 @@ CC = avr-gcc
 CFLAGS = -Wall -Wextra -Wpedantic -O2 -mmcu=$(DEVICE) -DF_CPU=16500000
 AS = arv-gcc
 ASFLAGS = $(CFLAGS)
-AVRDUDE = arvdude
+AVRDUDE = avrdude
 AVRFLAGS = -c $(PROGRAMMER) -p $(DEVICE) -B10
 
 OBJS = main.o usbconfig.o usbdrv/usbdrv.o usbdrv/usbdrvasm.o
