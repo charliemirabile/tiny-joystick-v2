@@ -10,7 +10,7 @@ AVRFLAGS = -c $(PROGRAMMER) -p $(DEVICE) -B10
 
 OBJS = main.o usbconfig.o usbdrv/usbdrv.o usbdrv/usbdrvasm.o
 
-.PHONY: all program fuses flash eeprom clean
+.PHONY: all program fuses flash eeprom dump clean
 
 all: main.bin
 
@@ -24,6 +24,10 @@ flash: main.hex
 
 eeprom: main.eep
 	$(AVRDUDE) $(AVRFLAGS) -U $@:w:$^:i
+
+dump:
+	$(AVRDUDE) $(AVRFLAGS) -U flash:r:backup_flash.bin:r
+	$(AVRDUDE) $(AVRFLAGS) -U eeprom:r:backup_eep.bin:r
 	
 main.hex: main.bin
 	avr-objcopy -j .text -j .data -O ihex $^ $@
