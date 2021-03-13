@@ -44,7 +44,7 @@ void main(void)
 			ADCSRA = (1<<ADEN) | (1<<ADPS2) | (1<<ADPS1) | (1<<ADSC) | (1<<ADIF); //clear interrupt flag and start conversion
 			while(!(ADCSRA&(1<<ADIF)))
 				;
-			usbSetInterrupt((uchar[]){0x09,0x90,42,0x8F & ADCH},4);
+			usbSetInterrupt((uchar[]){0x09,0x90,42,0x7F & ADCH},4);
 		}
 	}
 }
