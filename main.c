@@ -32,7 +32,7 @@ void main(void)
 	usbInit();
 	sei();
 
-	ADMUX = (1<<ADLAR) | 0b11; //select reading from PB3
+	ADMUX = (1<<ADLAR) | 0b10; //select reading from PB3
 	ADCSRA = (1<<ADEN) | (1<<ADPS2) | (1<<ADPS1) | (0<<ADPS0);
 
 	for(;;)
