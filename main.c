@@ -34,7 +34,7 @@ USB_Msg;
 
 static EEMEM uint16_t mode_eep = 0;
 
-static USB_Msg current_program[8] = {0};
+static USB_Msg current_program[8] = {{.usb_header=0x09,.msg={.header=0x90,.arg1=42,.arg2=42}}};
 
 static _Bool mode = 0;
 
@@ -201,7 +201,7 @@ void main(void)
 	sei();
 	ADCSRA = 1 << ADEN | 0b110; //enable ADC and set prescaler to 6 (divide by 64)
 
-	uchar last_pos = get_pos();
+	uchar last_pos = CENTER;/*get_pos();
 	switch(last_pos)
 	{
 	case CENTER:
@@ -219,7 +219,7 @@ void main(void)
 	case RIGHT:
 		change_program(4);
 		break;
-	}
+	}*/
 
 	uchar prog=0;
 
