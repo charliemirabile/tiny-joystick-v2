@@ -219,7 +219,8 @@ void main(void)
 	uchar prog=0;
 
 	for(;;)
-	{		
+	{
+		_Bool main_mode = mode;	
 		usbPoll();
 		if(usbInterruptIsReady())
 		{
@@ -232,7 +233,7 @@ void main(void)
 				else
 					move=pos-1;
 				last_pos = pos;
-				if(mode==0||move&2)
+				if(main_mode==0||move&2)
 				{
 					if(current_program[move].usb_header != 0)
 						usbSetInterrupt((uchar *)&(current_program[move]),sizeof(USB_Msg));
