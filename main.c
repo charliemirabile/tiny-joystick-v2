@@ -49,7 +49,7 @@ void change_program(Preset *ptr)
 
 void usbFunctionWriteOut(uchar * data, uchar len)
 {
-	static MIDI_Msg *message_ptr = NULL;
+	static MIDI_Msg *message_ptr = &(presets[0][0]);
 
 	//program change
 	if(data[0] == 0x0C && data[1] == 0xC0)
@@ -58,8 +58,6 @@ void usbFunctionWriteOut(uchar * data, uchar len)
 		return;
 	}
 
-	if(NULL==message_ptr)
-		return;
 	if(len != 4)
 		return;
 	if(data[0] != 0x0B)
