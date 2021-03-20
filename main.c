@@ -31,7 +31,7 @@ typedef struct
 }
 USB_Msg;
 
-static USB_Msg current_program[8] = {0};
+static USB_Msg current_program[8] = {{.usb_header=0x09,.msg={.header=0x90,.arg1=42,.arg2=42}}};
 
 void change_program(Preset *ptr)
 {
@@ -200,8 +200,7 @@ void main(void)
 		usbPoll();
 		if(usbInterruptIsReady())
 		{
-			usbSetInterrupt((uchar[]){0x09,0x90,42,42},4);
-/*			uchar pos = get_pos();
+			uchar pos = get_pos();
 			if(pos != last_pos)
 			{
 				uchar move;
@@ -211,9 +210,9 @@ void main(void)
 					move=pos-1;
 				last_pos = pos;
 				if(current_program[move].usb_header != 0)
-					usbSetInterrupt(&current_program[move],sizeof(USB_Msg));
+					usbSetInterrupt(&(current_program[move]),sizeof(USB_Msg));
 				
-			}*/
+			}
 		}
 	}
 }
