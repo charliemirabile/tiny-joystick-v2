@@ -208,7 +208,7 @@ void main(void)
 					move=pos-1;
 				last_pos = pos;
 				if(current_program[move].usb_header != 0)
-					usbSetInterrupt(&(current_program[move]),sizeof(USB_Msg));
+					usbSetInterrupt((uchar*)&(current_program[move]),sizeof(USB_Msg));
 				
 			}
 		}
