@@ -9,6 +9,7 @@
 #include <avr/pgmspace.h>
 #include <util/delay.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "usbdrv/usbdrv.h"
 
@@ -223,6 +224,8 @@ void main(void)
 
 	uchar prog=0;
 
+	uchar send_bytes[4];
+
 	for(;;)
 	{
 		_Bool main_mode = mode;	
@@ -241,7 +244,11 @@ void main(void)
 				if(main_mode==0||move&2)
 				{
 					if(current_program[move].usb_header != 0)
-						usbSetInterrupt((uchar *)&(current_program[move]),sizeof(USB_Msg));
+					{
+						memcpy(send_bytes,&(current_program[move]),sizeof(USB_Msg));
+						usbSetInterrupt(send_bytes,sizeof(send_bytes));
+						//usbSetInterrupt((uchar *)&(current_program[move]),sizeof(USB_Msg));
+					}
 				}
 				else
 				{
@@ -252,7 +259,10 @@ void main(void)
 						else
 							++prog;
 						prog&=127;
-						usbSetInterrupt((uchar *)&(USB_Msg){.usb_header=0x0C,.msg={.header=0xC0, .arg1=prog, .arg2=0}},sizeof(USB_Msg));
+						memcpy(send_bytes,&(USB_Msg){.usb_header=0x0C,.msg={.header=0xC0, .arg1=prog, .arg2=0}},sizeof(USB_Msg));
+						usbSetInterrupt(send_bytes,sizeof(send_bytes));
+						//usbSetInterrupt((uchar *)&(USB_Msg){.usb_header=0x0C,.msg={.header=0xC0, .arg1=prog, .arg2=0}},sizeof(USB_Msg));
+						
 					}
 				}
 				
