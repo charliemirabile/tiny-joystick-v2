@@ -172,8 +172,7 @@ void main(void)
 	sei();
 	ADCSRA = 1 << ADEN | 0b110; //enable ADC and set prescaler to 6 (divide by 64)
 
-	uchar prog = 0;
-	uchar last_pos; /*= get_pos();
+	uchar last_pos = get_pos();
 	switch(last_pos)
 	{
 	case CENTER:
@@ -191,7 +190,7 @@ void main(void)
 	case RIGHT:
 		change_program(&presets[4]);
 		break;
-	}*/
+	}
 
 	for(;;)
 	{		
