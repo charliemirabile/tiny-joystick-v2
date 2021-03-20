@@ -33,11 +33,11 @@ USB_Msg;
 
 static USB_Msg current_program[8] = {{.usb_header=0x09,.msg={.header=0x90,.arg1=42,.arg2=42}}};
 
-void change_program(Preset *ptr)
+void change_program(Preset ptr)
 {
 	for(uchar i=0;i<8; ++i)
 	{
-		eeprom_read_block(&(current_program[i].msg),&((*ptr)[i]),sizeof(MIDI_Msg));
+		eeprom_read_block(&(current_program[i].msg),&(ptr[i]),sizeof(MIDI_Msg));
 		current_program[i].usb_header = current_program[i].msg.header>>4;
 	}
 }
@@ -54,7 +54,7 @@ void usbFunctionWriteOut(uchar * data, uchar len)
 	//program change
 	if(data[0] == 0x0C && data[1] == 0xC0)
 	{
-		change_program(&presets[data[2]&0xf]);
+		change_program(presets[data[2]&0xf]);
 		return;
 	}
 
