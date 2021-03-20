@@ -31,17 +31,25 @@ typedef struct
 }
 USB_Msg;
 
+
+static EEMEM uint16_t mode_eep = 0;
+static uint16_t mode_storage = 0;
+
 static USB_Msg current_program[8] = {0};
 
-void change_program(Preset ptr)
+static _Bool mode = 0;
+
+void change_program(uchar preset_num)
 {
 	for(uchar i=0;i<8; ++i)
 	{
-		eeprom_read_block(&(current_program[i].msg),&(ptr[i]),sizeof(MIDI_Msg));
+		eeprom_read_block(&(current_program[i].msg),&(presets[preset_num][i]),sizeof(MIDI_Msg));
 		current_program[i].usb_header = current_program[i].msg.header>>4;
 	}
+	mode = mode_storage & (1<<preset_num);
 }
 
+#define MODE_TOGGLE_CODE 15
 #define RUNTIME_TYPE_CONFIG_CODE 16
 #define RUNTIME_ARG1_CONFIG_CODE 24
 #define RUNTIME_ARG2_CONFIG_CODE 32
@@ -54,7 +62,7 @@ void usbFunctionWriteOut(uchar * data, uchar len)
 	//program change
 	if(data[0] == 0x0C && data[1] == 0xC0)
 	{
-		change_program(presets[data[2]&0xf]);
+		change_program(data[2]&0xf);
 		return;
 	}
 
@@ -67,6 +75,13 @@ void usbFunctionWriteOut(uchar * data, uchar len)
 	
 	switch(data[2])
 	{
+#ifdef MODE_TOGGLE_CODE
+	case MODE_TOGGLE_CODE:
+		mode_storage ^= 1 << (data[2]&0xf);
+		eeprom_update_block(&mode_storage,&mode_eep,sizeof(mode_storage));
+		break;
+#endif
+
 #ifdef EEPROM_CONFIG_CODE
 	case EEPROM_CONFIG_CODE+0:
 		message_ptr = &presets[data[3]>>3][data[3]&0x7];
@@ -172,25 +187,29 @@ void main(void)
 	sei();
 	ADCSRA = 1 << ADEN | 0b110; //enable ADC and set prescaler to 6 (divide by 64)
 
+	eeprom_read_block(&mode_storage,&mode_eep,sizeof(mode_storage));
+
 	uchar last_pos = get_pos();
 	switch(last_pos)
 	{
 	case CENTER:
-		change_program(presets[0]);
+		change_program(0);
 		break;
 	case UP:
-		change_program(presets[1]);
+		change_program(1);
 		break;
 	case DOWN:
-		change_program(presets[2]);
+		change_program(2);
 		break;
 	case LEFT:
-		change_program(presets[3]);
+		change_program(3);
 		break;
 	case RIGHT:
-		change_program(presets[4]);
+		change_program(4);
 		break;
 	}
+
+	uchar prog=0;
 
 	for(;;)
 	{		
@@ -206,8 +225,23 @@ void main(void)
 				else
 					move=pos-1;
 				last_pos = pos;
-				if(current_program[move].usb_header != 0)
-					usbSetInterrupt((uchar*)&(current_program[move]),sizeof(USB_Msg));
+				if(mode==0||move&2)
+				{
+					if(current_program[move].usb_header != 0)
+						usbSetInterrupt((uchar *)&(current_program[move]),sizeof(USB_Msg));
+				}
+				else
+				{
+					if(!(move&4))
+					{
+						if(move)
+							--prog;
+						else
+							++prog;
+						prog&=127;
+						usbSetInterrupt((uchar *)&(USB_Msg){.usb_header=0x0C,.msg={.header=0xC0, .arg1=prog, .arg2=0}},sizeof(USB_Msg));
+					}
+				}
 				
 			}
 		}
