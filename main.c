@@ -31,7 +31,7 @@ typedef struct
 }
 USB_Msg;
 
-static USB_Msg current_program[8] = {{.usb_header=0x09,.msg={.header=0x90,.arg1=42,.arg2=42}}};
+static USB_Msg current_program[8] = {0};
 
 void change_program(Preset ptr)
 {
