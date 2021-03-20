@@ -74,15 +74,17 @@ void usbFunctionWriteOut(uchar * data, uchar len)
 		return;
 	if(data[1] != 0xB0)
 		return;
+
+	MIDI_Msg *msg = &((USB_Msg*)data)->msg;
 	
-	switch(data[2])
+	switch(msg->arg1)
 	{
 #ifdef MODE_TOGGLE_CODE
 	case MODE_TOGGLE_CODE:
 		{
 			uint16_t mode_storage;
 			eeprom_read_block(&mode_storage,&mode_eep,sizeof(mode_eep));
-			mode_storage ^= 1 << (data[2]&0xf);
+			mode_storage ^= 1 << (msg->arg2&0xf);
 			eeprom_update_block(&mode_storage,&mode_eep,sizeof(mode_storage));
 		}
 		break;
@@ -96,44 +98,44 @@ void usbFunctionWriteOut(uchar * data, uchar len)
 
 #ifdef EEPROM_CONFIG_CODE
 	case EEPROM_CONFIG_CODE+0:
-		message_ptr = &presets[data[3]>>3][data[3]&0x7];
+		message_ptr = &presets[msg->arg2>>3][msg->arg2&0x7];
 		break;
 	case EEPROM_CONFIG_CODE+1:
-		if(data[3]>=0x70)
+		if(msg->arg2>=0x70)
 			eeprom_write_byte(&message_ptr->header,0);
 		else
-			eeprom_write_byte(&message_ptr->header,0x80|data[3]);
+			eeprom_write_byte(&message_ptr->header,0x80|msg->arg2);
 		break;
 	case EEPROM_CONFIG_CODE+2:
-		eeprom_write_byte(&message_ptr->arg1,data[3]);
+		eeprom_write_byte(&message_ptr->arg1,msg->arg2);
 		break;
 	case EEPROM_CONFIG_CODE+3:
-		eeprom_write_byte(&message_ptr->arg2,data[3]);
+		eeprom_write_byte(&message_ptr->arg2,msg->arg2);
 		break;
 #endif
 
 #ifdef RUNTIME_ARG1_CONFIG_CODE
 	case RUNTIME_ARG1_CONFIG_CODE ... RUNTIME_ARG1_CONFIG_CODE+7:
-		current_program[data[2]-RUNTIME_ARG1_CONFIG_CODE].msg.arg1=data[3];
+		current_program[msg->arg1-RUNTIME_ARG1_CONFIG_CODE].msg.arg1=msg->arg2;
 		break;
 #endif
 
 #ifdef RUNTIME_ARG2_CONFIG_CODE
 	case RUNTIME_ARG2_CONFIG_CODE ... RUNTIME_ARG2_CONFIG_CODE+7:
-		current_program[data[2]-RUNTIME_ARG2_CONFIG_CODE].msg.arg2=data[3];
+		current_program[msg->arg1-RUNTIME_ARG2_CONFIG_CODE].msg.arg2=msg->arg2;
 		break;
 #endif
 
 #ifdef RUNTIME_TYPE_CONFIG_CODE
 	case RUNTIME_TYPE_CONFIG_CODE ... RUNTIME_TYPE_CONFIG_CODE+7:
-		if(data[3]>=0x70)
+		if(msg->arg2>=0x70)
 		{
-			current_program[data[2]-RUNTIME_TYPE_CONFIG_CODE].usb_header=0;
+			current_program[msg->arg1-RUNTIME_TYPE_CONFIG_CODE].usb_header=0;
 		}
 		else
 		{
-			current_program[data[2]-RUNTIME_TYPE_CONFIG_CODE].msg.header=0x80|data[3];
-			current_program[data[2]-RUNTIME_TYPE_CONFIG_CODE].usb_header=(0x80|data[3])>>4;
+			current_program[msg->arg1-RUNTIME_TYPE_CONFIG_CODE].msg.header=0x80|msg->arg2;
+			current_program[msg->arg1-RUNTIME_TYPE_CONFIG_CODE].usb_header=(0x80|msg->arg2)>>4;
 		}
 		break;
 #endif
