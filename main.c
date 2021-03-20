@@ -69,7 +69,7 @@ void usbFunctionWriteOut(uchar * data, uchar len)
 	{
 #ifdef EEPROM_CONFIG_CODE
 	case EEPROM_CONFIG_CODE+0:
-		message_ptr = &presets[data[3]>>4][data[3]&0x7];
+		message_ptr = &presets[data[3]>>3][data[3]&0x7];
 		break;
 	case EEPROM_CONFIG_CODE+1:
 		if(data[3]>=0x70)
