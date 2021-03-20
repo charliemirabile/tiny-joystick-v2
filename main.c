@@ -33,7 +33,6 @@ USB_Msg;
 
 
 static EEMEM uint16_t mode_eep = 0;
-static uint16_t mode_storage = 0;
 
 static USB_Msg current_program[8] = {0};
 
@@ -46,6 +45,8 @@ void change_program(uchar preset_num)
 		eeprom_read_block(&(current_program[i].msg),&(presets[preset_num][i]),sizeof(MIDI_Msg));
 		current_program[i].usb_header = current_program[i].msg.header>>4;
 	}
+	uint16_t mode_storage;
+	eeprom_read_block(&mode_storage,&mode_eep,sizeof(mode_eep));
 	mode = mode_storage & (1<<preset_num);
 }
 
@@ -78,8 +79,12 @@ void usbFunctionWriteOut(uchar * data, uchar len)
 	{
 #ifdef MODE_TOGGLE_CODE
 	case MODE_TOGGLE_CODE:
-		mode_storage ^= 1 << (data[2]&0xf);
-		eeprom_update_block(&mode_storage,&mode_eep,sizeof(mode_storage));
+		{
+			uint16_t mode_storage;
+			eeprom_read_block(&mode_storage,&mode_eep,sizeof(mode_eep));
+			mode_storage ^= 1 << (data[2]&0xf);
+			eeprom_update_block(&mode_storage,&mode_eep,sizeof(mode_storage));
+		}
 		break;
 #endif
 
@@ -193,8 +198,6 @@ void main(void)
 	usbInit();
 	sei();
 	ADCSRA = 1 << ADEN | 0b110; //enable ADC and set prescaler to 6 (divide by 64)
-
-	eeprom_read_block(&mode_storage,&mode_eep,sizeof(mode_storage));
 
 	uchar last_pos = get_pos();
 	switch(last_pos)
