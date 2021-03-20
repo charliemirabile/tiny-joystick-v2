@@ -181,10 +181,10 @@ void main(void)
 	case UP:
 		change_program(presets[1]);
 		break;
-	case LEFT:
+	case DOWN:
 		change_program(presets[2]);
 		break;
-	case DOWN:
+	case LEFT:
 		change_program(presets[3]);
 		break;
 	case RIGHT:
@@ -213,4 +213,3 @@ void main(void)
 		}
 	}
 }
-
