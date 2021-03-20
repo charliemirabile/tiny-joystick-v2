@@ -90,14 +90,12 @@ void usbFunctionWriteOut(uchar * data, uchar len)
 #ifdef RUNTIME_ARG1_CONFIG_CODE
 	case RUNTIME_ARG1_CONFIG_CODE ... RUNTIME_ARG1_CONFIG_CODE+7:
 		current_program[data[2]-RUNTIME_ARG1_CONFIG_CODE].msg.arg1=data[3];
-//		current_program.direction_lookup_table[data[2]-RUNTIME_ARG1_CONFIG_CODE].bytes[2] = config;
 		break;
 #endif
 
 #ifdef RUNTIME_ARG2_CONFIG_CODE
 	case RUNTIME_ARG2_CONFIG_CODE ... RUNTIME_ARG2_CONFIG_CODE+7:
 		current_program[data[2]-RUNTIME_ARG2_CONFIG_CODE].msg.arg2=data[3];
-//		current_program.direction_lookup_table[data[2]-RUNTIME_ARG2_CONFIG_CODE].bytes[3] = config;
 		break;
 #endif
 
