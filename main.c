@@ -176,19 +176,19 @@ void main(void)
 	switch(last_pos)
 	{
 	case CENTER:
-		change_program(&presets[0]);
+		change_program(presets[0]);
 		break;
 	case UP:
-		change_program(&presets[1]);
+		change_program(presets[1]);
 		break;
 	case LEFT:
-		change_program(&presets[2]);
+		change_program(presets[2]);
 		break;
 	case DOWN:
-		change_program(&presets[3]);
+		change_program(presets[3]);
 		break;
 	case RIGHT:
-		change_program(&presets[4]);
+		change_program(presets[4]);
 		break;
 	}
 
