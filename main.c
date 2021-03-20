@@ -12,204 +12,111 @@
 
 #include "usbdrv/usbdrv.h"
 
-//uchar note = 0;
-
-
-
-const EEMEM uchar eeprom[] = 
+typedef struct
 {
-	[0 ... 511]=0,
-
-	[0]=0x09, 0x90, 42, 42,
-	0x09, 0x90, 43, 43,
-	0x09, 0x90, 44, 44,
-	0x09, 0x90, 45, 45,
-	0x08, 0x80, 42, 42,
-	0x08, 0x80, 43, 43,
-	0x08, 0x80, 44, 44,
-	0x08, 0x80, 45, 45,
-	
-};
-
-
-typedef union
-{
-	uchar bytes[4];
-	struct
-	{
-		uchar packet_header;
-		uchar midi_header;
-		uchar midi_arg1;
-		uchar midi_arg2;
-	};
+	uchar header;
+	uchar arg1;
+	uchar arg2;
 }
-USB_midi_msg;
+MIDI_Msg;
 
-static union
+typedef MIDI_Msg Preset[8];
+
+EEMEM Preset presets[16];
+
+typedef struct
 {
-	uchar bytes[32];
-	USB_midi_msg direction_lookup_table[8];	
+	uchar usb_header;
+	MIDI_Msg msg;
 }
-current_program = {.direction_lookup_table[0] = {.packet_header = 0x09, .midi_header = 0x90, .midi_arg1 = 42, .midi_arg2 = 42}};
+USB_Msg;
 
-typedef union
+static USB_Msg current_program[8] = {0};
+
+void change_program(Preset *ptr)
 {
-	uchar byte;
-	
-	struct
+	for(uchar i=0;i<8; ++i)
 	{
-		uchar direction:3;
-		uchar preset_num:4;
-	};
-	struct
-	{
-		uchar channel:4;
-		uchar type:3;
-	};
+		eeprom_read_block(&(current_program[i].msg),&((*ptr)[i]),sizeof(MIDI_Msg));
+		current_program[i].usb_header = current_program[i].msg.header>>4;
+	}
 }
-config_byte;
-
-typedef union
-{
-	uchar *ptr;
-	uint16_t addr;
-	struct
-	{
-		uint16_t offset:2;
-		uint16_t direction:3;
-		uint16_t preset:4;
-	};
-	struct
-	{
-		uint16_t _:2;
-		uint16_t index:7;
-	};
-}
-config_loc;
-
-#define NOTE_OFF 0x8
-#define NOTE_ON 0x9
-#define POLY_PRESS 0xA
-#define CONTROLLER 0xB
-#define PRG_CHANGE 0xC
-#define CHAN_PRESS 0xD
-#define PITCH_BEND 0xE
-#define NO_MSG 0xF
-
-void change_program(uchar prog)
-{
-	config_loc loc = {.preset = prog & 0xf};//only 16 presets possible
-
-	//copy the 32 byte table for the preset into ram
-	for(uchar i=0;i<32;++i)
-		current_program.bytes[i]=eeprom_read_byte(loc.ptr+i);	
-}
-
-static _Bool toggle_mode = 0;
-
 
 #define RUNTIME_TYPE_CONFIG_CODE 16
 #define RUNTIME_ARG1_CONFIG_CODE 24
 #define RUNTIME_ARG2_CONFIG_CODE 32
 #define EEPROM_CONFIG_CODE 40
-#define MODE_SWAP_CODE 15
 
 void usbFunctionWriteOut(uchar * data, uchar len)
 {
-	static config_loc loc = {.addr=0};
-
-	//if its not a controller message on virt cable 0 bail
-	if(len != 4)
-		return;
+	static MIDI_Msg *message_ptr = NULL;
 
 	//program change
 	if(data[0] == 0x0C && data[1] == 0xC0)
 	{
-		change_program(data[2]);
+		change_program(&presets[data[2]&0xf]);
 		return;
 	}
+
+	if(NULL==message_ptr)
+		return;
+	if(len != 4)
+		return;
 	if(data[0] != 0x0B)
 		return;
 	if(data[1] != 0xB0)
 		return;
-
-	uchar config = data[3];
-
-	uchar type = data[3]|0x80;
-	
-	uchar usb_midi_header = type>>4;
 	
 	switch(data[2])
 	{
-#ifdef MODE_SWAP_CODE
-	case MODE_SWAP_CODE:
-		toggle_mode = 1;
-		break;
-#endif
 #ifdef EEPROM_CONFIG_CODE
 	case EEPROM_CONFIG_CODE+0:
-		loc.index = config;
+		message_ptr = &presets[data[2]>>4][data[2]&0x7];
 		break;
 	case EEPROM_CONFIG_CODE+1:
-		//check for them wanting to send no message
-		if(0xf == usb_midi_header)
-		{
-			//write 0 to indicate no message
-			eeprom_write_byte(loc.ptr,0);
-		}
+		if(data[3]>=0x70)
+			eeprom_write_byte(&message_ptr->header,0);
 		else
-		{
-			//write the usb midi header byte
-			eeprom_write_byte(loc.ptr,usb_midi_header);
-			//write the midi header byte
-			eeprom_write_byte(loc.ptr+1, type);
-		}
+			eeprom_write_byte(&message_ptr->header,0x80|data[3]);
 		break;
 	case EEPROM_CONFIG_CODE+2:
-		//write the first argument byte
-		eeprom_write_byte(loc.ptr+2,config);
+		eeprom_write_byte(&message_ptr->arg1,data[3]);
 		break;
 	case EEPROM_CONFIG_CODE+3:
-		//write the second argument byte
-		eeprom_write_byte(loc.ptr+3,config);
+		eeprom_write_byte(&message_ptr->arg2,data[3]);
 		break;
 #endif
 
 #ifdef RUNTIME_ARG1_CONFIG_CODE
 	case RUNTIME_ARG1_CONFIG_CODE ... RUNTIME_ARG1_CONFIG_CODE+7:
-		current_program.direction_lookup_table[data[2]-RUNTIME_ARG1_CONFIG_CODE].bytes[2] = config;
+		current_program[data[2]-RUNTIME_ARG1_CONFIG_CODE].msg.arg1=data[3];
+//		current_program.direction_lookup_table[data[2]-RUNTIME_ARG1_CONFIG_CODE].bytes[2] = config;
 		break;
 #endif
 
 #ifdef RUNTIME_ARG2_CONFIG_CODE
 	case RUNTIME_ARG2_CONFIG_CODE ... RUNTIME_ARG2_CONFIG_CODE+7:
-		current_program.direction_lookup_table[data[2]-RUNTIME_ARG2_CONFIG_CODE].bytes[3] = config;
+		current_program[data[2]-RUNTIME_ARG2_CONFIG_CODE].msg.arg2=data[3];
+//		current_program.direction_lookup_table[data[2]-RUNTIME_ARG2_CONFIG_CODE].bytes[3] = config;
 		break;
 #endif
 
 #ifdef RUNTIME_TYPE_CONFIG_CODE
 	case RUNTIME_TYPE_CONFIG_CODE ... RUNTIME_TYPE_CONFIG_CODE+7:
-		if(0xf == usb_midi_header)
+		if(data[3]>=0x70)
 		{
-			current_program.direction_lookup_table[data[2]-RUNTIME_TYPE_CONFIG_CODE].bytes[0] = 0;
+			current_program[data[2]-RUNTIME_TYPE_CONFIG_CODE].usb_header=0;
 		}
 		else
 		{
-			current_program.direction_lookup_table[data[2]-RUNTIME_TYPE_CONFIG_CODE].bytes[0] = usb_midi_header;
-			current_program.direction_lookup_table[data[2]-RUNTIME_TYPE_CONFIG_CODE].bytes[1] = type;
+			current_program[data[2]-RUNTIME_TYPE_CONFIG_CODE].msg.header=0x80|data[3];
+			current_program[data[2]-RUNTIME_TYPE_CONFIG_CODE].usb_header=(0x80|data[3])>>4;
 		}
 		break;
 #endif
 		
 	}
-/*
-	if(data[0]==0x0B && data[1]==0xB0 && data[2]==100 && data[3]==0)
-	{
-		++note;
-		if(note==128)
-			note = 0;
-	}
-*/}
+}
 
 typedef enum
 {
@@ -252,73 +159,6 @@ uchar get_pos(void)
 	return CENTER;
 }
 
-typedef union
-{
-	uchar bytes[4];
-	struct
-	{
-		uchar codeindex:4;
-		uchar cablenum:4;
-		uchar channel:4;
-		uchar msg_type:4;
-		union
-		{
-			uchar note:7;
-			uchar controller:7;
-			uchar program:7;
-			uchar chan_pressure:7;
-			uchar bend_lsb:7;
-		};
-		union
-		{
-			uchar velocity:7;
-			uchar pressure:7;
-			uchar value:7;
-			uchar bend_msb:7;
-		};
-	};	
-}
-midimsg;
-
-
-
-
-
-/*
-int main(void)
-{
-	usbDeviceDisconnect();
-	for(uchar i=0;i<250;i++)
-		_delay_ms(2);
-	usbDeviceConnect();
-
-	usbInit();
-	sei();
-
-	uchar last_pos = CENTER;
-
-	for(;;)
-	{
-		usbPoll();
-		if(usbInterruptIsReady())
-		{
-
-			uchar pos = get_pos();
-			if(pos != last_pos)
-			{
-				uchar move = pos & 0x4; //if new position is center we set the 4's place
-				move |= (pos | last_pos) & 0x3; //1's and 2's place comes from the direction
-				last_pos = pos;
-				if(current_program.direction_lookup_table[move].bytes[0] != 0)
-					usbSetInterrupt(current_program.direction_lookup_table[move].bytes,sizeof(USB_midi_msg));
-			}
-		}
-	}
-}*/
-
-
-
-//////// Main ////////////
 void main(void)
 {
 	wdt_disable();
@@ -336,26 +176,24 @@ void main(void)
 	sei();
 	ADCSRA = 1 << ADEN | 0b110; //enable ADC and set prescaler to 6 (divide by 64)
 
-	_Bool mode = 0;
 	uchar prog = 0;
 	uchar last_pos = get_pos();
 	switch(last_pos)
 	{
-	case UP:
-		change_program(0);
-		mode = 1;
-		break;
 	case CENTER:
-		change_program(0);
+		change_program(&presets[0]);
+		break;
+	case UP:
+		change_program(&presets[1]);
 		break;
 	case LEFT:
-		change_program(1);
+		change_program(&presets[2]);
 		break;
 	case DOWN:
-		change_program(2);
+		change_program(&presets[3]);
 		break;
 	case RIGHT:
-		change_program(3);
+		change_program(&presets[4]);
 		break;
 	}
 
@@ -364,11 +202,6 @@ void main(void)
 		usbPoll();
 		if(usbInterruptIsReady())
 		{
-			if(toggle_mode)
-			{
-				toggle_mode=0;
-				mode = !mode;
-			}
 			uchar pos = get_pos();
 			if(pos != last_pos)
 			{
@@ -378,11 +211,11 @@ void main(void)
 				else
 					move=pos-1;
 				last_pos = pos;
-				if(mode==0||move&2)
-				{
-					if(current_program.direction_lookup_table[move].bytes[0] != 0)
-						usbSetInterrupt(current_program.direction_lookup_table[move].bytes,sizeof(USB_midi_msg));
-				}
+//				if(mode==0||move&2)
+//				{
+					if(current_program[move].usb_header != 0)
+						usbSetInterrupt(&current_program[move],sizeof(USB_Msg));
+/*				}
 				else
 				{
 					if(!(move&4))
@@ -394,11 +227,10 @@ void main(void)
 						prog&=127;
 						usbSetInterrupt((USB_midi_msg){.packet_header=0x0C,.midi_header=0xC0,.midi_arg1=prog, .midi_arg2=0}.bytes,sizeof(USB_midi_msg));
 					}
-				}
+				}*/
 				
 			}
 		}
-
 	}
 }
 
