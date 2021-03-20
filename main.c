@@ -54,6 +54,7 @@ void change_program(uchar preset_num)
 #define RUNTIME_ARG1_CONFIG_CODE 24
 #define RUNTIME_ARG2_CONFIG_CODE 32
 #define EEPROM_CONFIG_CODE 40
+#define RUNTIME_MODE_TOGGLE 45
 
 void usbFunctionWriteOut(uchar * data, uchar len)
 {
@@ -79,6 +80,12 @@ void usbFunctionWriteOut(uchar * data, uchar len)
 	case MODE_TOGGLE_CODE:
 		mode_storage ^= 1 << (data[2]&0xf);
 		eeprom_update_block(&mode_storage,&mode_eep,sizeof(mode_storage));
+		break;
+#endif
+
+#ifdef RUNTIME_MODE_TOGGLE
+	case RUNTIME_MODE_TOGGLE:
+		mode = !mode;
 		break;
 #endif
 
