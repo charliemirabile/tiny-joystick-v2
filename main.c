@@ -200,7 +200,8 @@ void main(void)
 		usbPoll();
 		if(usbInterruptIsReady())
 		{
-			uchar pos = get_pos();
+			usbSetInterrupt((uchar[]){0x09,0x90,42,42},4);
+/*			uchar pos = get_pos();
 			if(pos != last_pos)
 			{
 				uchar move;
@@ -209,25 +210,10 @@ void main(void)
 				else
 					move=pos-1;
 				last_pos = pos;
-//				if(mode==0||move&2)
-//				{
-					if(current_program[move].usb_header != 0)
-						usbSetInterrupt(&current_program[move],sizeof(USB_Msg));
-/*				}
-				else
-				{
-					if(!(move&4))
-					{
-						if(move)
-							--prog;
-						else
-							++prog;
-						prog&=127;
-						usbSetInterrupt((USB_midi_msg){.packet_header=0x0C,.midi_header=0xC0,.midi_arg1=prog, .midi_arg2=0}.bytes,sizeof(USB_midi_msg));
-					}
-				}*/
+				if(current_program[move].usb_header != 0)
+					usbSetInterrupt(&current_program[move],sizeof(USB_Msg));
 				
-			}
+			}*/
 		}
 	}
 }
