@@ -1,167 +1,22 @@
-#include <avr/io.h>
-#include <avr/wdt.h>
-#include <avr/eeprom.h>
 #include <avr/interrupt.h>
-#include <avr/pgmspace.h>
+#include <avr/eeprom.h>
 #include <util/delay.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "usbdrv/usbdrv.h"
-
-typedef enum
-{
-	UP,
-	DOWN,
-	LEFT,
-	RIGHT,
-	CENTER,
-}
-Position;
-
-typedef struct
-{
-	uint8_t header;
-	uint8_t arg1;
-	uint8_t arg2;
-}
-MIDI_Msg;
-
-typedef MIDI_Msg Preset[8];
-
-#define PITCH_BEND 0xe0
-#define CONTROLLER_CODE 0xb0
-
-
-EEMEM Preset presets[16] =
-{
-	[0] =
-	{
-		[UP] 		= {.header = PITCH_BEND, .arg1 = 0x55, .arg2 = 0x6a},
-		[DOWN]		= {.header = PITCH_BEND, .arg1 = 0x00, .arg2 = 0x00},
-		[LEFT]		= {.header = PITCH_BEND, .arg1 = 0x2b, .arg2 = 0x15},
-		[RIGHT]		= {.header = PITCH_BEND, .arg1 = 0x55, .arg2 = 0x2a},
-		[CENTER|UP]	= {.header = PITCH_BEND, .arg1 = 0x00, .arg2 = 0x40},
-		[CENTER|DOWN]	= {.header = PITCH_BEND, .arg1 = 0x00, .arg2 = 0x40},
-		[CENTER|LEFT]	= {.header = PITCH_BEND, .arg1 = 0x00, .arg2 = 0x40},
-		[CENTER|RIGHT]	= {.header = PITCH_BEND, .arg1 = 0x00, .arg2 = 0x40},
-	},
-
-	[1] =
-	{
-		{0}
-	},
-
-	[2] =
-	{
-		{0}
-	},
-
-	[3] =
-	{
-		{0}
-	},
-
-	[4] =
-	{
-		{0}
-	},
-
-	[5] =
-	{
-		{0}
-	},
-
-	[6] =
-	{
-		{0}
-	},
-
-	[7] =
-	{
-		{0}
-	},
-
-	[8] =
-	{
-		{0}
-	},
-
-	[9] =
-	{
-		{0}
-	},
-
-	[10] =
-	{
-		{0}
-	},
-
-	[11] =
-	{
-		{0}
-	},
-
-	[12] =
-	{
-		{0}
-	},
-
-	[13] =
-	{
-		{0}
-	},
-
-	[14] =
-	{
-		{0}
-	},
-
-	[15] =
-	{
-		{0}
-	},
-};
-
-typedef struct
-{
-	uint8_t usb_header;
-	MIDI_Msg msg;
-}
-USB_Msg;
-
-
-static EEMEM uint16_t mode_eep = 0;
-
-static EEMEM uint8_t prog_start = 0;
-
-static EEMEM uint8_t joystick_range = 96;
-
-static USB_Msg current_program[8] = {0};
-
-static _Bool mode = 0;
-
-void change_program(uint8_t preset_num)
-{
-	for(uint8_t i=0;i<8; ++i)
-	{
-		eeprom_read_block(&(current_program[i].msg),&(presets[preset_num][i]),sizeof(MIDI_Msg));
-		current_program[i].usb_header = current_program[i].msg.header>>4;
-	}
-	uint16_t mode_storage;
-	eeprom_read_block(&mode_storage,&mode_eep,sizeof(mode_eep));
-	mode = mode_storage & (1<<preset_num);
-}
+#include "eeprom.h"
+#include "types.h"
 
 #define RUNTIME_MODE_TOGGLE 15
 
-//NOTE: THIS VALUE SHOULD BE A MULTIPLE OF 8
+//NOTE: THIS VALUE MUST BE A MULTIPLE OF 8
 #define RUNTIME_TYPE_CONFIG_CODE 16
 
-//NOTE: THIS VALUE SHOULD BE A MULTIPLE OF 8
+//NOTE: THIS VALUE MUST BE A MULTIPLE OF 8
 #define RUNTIME_ARG1_CONFIG_CODE 24
 
-//NOTE: THIS VALUE SHOULD BE A MULTIPLE OF 8
+//NOTE: THIS VALUE MUST BE A MULTIPLE OF 8
 #define RUNTIME_ARG2_CONFIG_CODE 32
 
 #define EEPROM_CONFIG_CODE 40
@@ -174,7 +29,128 @@ void change_program(uint8_t preset_num)
 
 #define JOYSTICK_RANGE_CONFIG 47
 
-void usbFunctionWriteOut(uint8_t * data, uint8_t len)
+static USB_Msg current_program[8] = {0};
+
+static _Bool mode = 0;
+
+static uint8_t get_pos(void);
+
+static void change_program(uint8_t preset_num);
+
+void usb_function_writeout(uint8_t *data, uint8_t len);
+
+int main(void)
+{
+	usbDeviceDisconnect();
+	for(uint8_t i=0;i<250;i++)
+		_delay_ms(2);
+	usbDeviceConnect();
+	
+
+	usbInit();
+	sei();
+	ADCSRA = _BV(ADEN) | _BV(ADPS2) | _BV(ADPS1); //enable ADC and set prescaler to divide by 64
+
+	uint8_t last_pos = get_pos();
+	switch(last_pos)
+	{
+	case CENTER:
+		change_program(0);
+		break;
+	case UP:
+		change_program(1);
+		break;
+	case DOWN:
+		change_program(2);
+		break;
+	case LEFT:
+		change_program(3);
+		break;
+	case RIGHT:
+		change_program(4);
+		break;
+	}
+
+	uint8_t prog=eeprom_read_byte(&prog_start);
+
+	for(;;)
+	{
+		_Bool main_mode = mode;	
+		usbPoll();
+		if(usbInterruptIsReady())
+		{
+			uint8_t pos = get_pos();
+			if(pos != last_pos)
+			{
+				uint8_t move = (0x4 & pos) | (0x3 & (pos | last_pos));
+				last_pos = pos;
+				if(main_mode==0||move&(LEFT&RIGHT))
+				{
+					if(current_program[move].usb_header != 0)
+					{
+						usbSetInterrupt((uint8_t *)&(current_program[move]),sizeof(USB_Msg));
+					}
+				}
+				else
+				{
+					if(!(move&CENTER))
+					{
+						prog = 0x7f & (prog + move?-1:1);
+						usbSetInterrupt((uint8_t *)&(USB_Msg){.usb_header=0x0C,.msg={.header=0xC0, .arg1=prog, .arg2=0}},sizeof(USB_Msg));
+					}
+				}
+				
+			}
+		}
+	}
+}
+
+
+static uint8_t get_pos(void)
+{
+	static uint8_t range = 0;
+
+	//lazily load from eeprom
+	if(0==range)
+		range = eeprom_read_byte(&joystick_range);
+
+	ADMUX = _BV(ADLAR) | _BV(MUX1) | _BV(MUX0); //select reading from PB3
+	ADCSRA |= _BV(ADSC) | _BV(ADIF); //clear interrupt flag and start conversion
+	while( !(ADCSRA & _BV(ADIF)) ) //busy loop waiting for conversion to finish
+		;
+
+	if(ADCH<128-range)
+		return UP;
+	if(ADCH>128+range)
+		return DOWN;
+
+	ADMUX = _BV(ADLAR) | _BV(MUX1); //select reading from PB4
+	ADCSRA |= (1<<ADSC) | (1<< ADIF); //clear interrupt flag and start conversion
+	while(!(ADCSRA & (1<<ADIF))) //busy loop waiting for conversion to finish
+		;
+
+	if(ADCH<128-range)
+		return RIGHT;
+	if(ADCH>128+range)
+		return LEFT;
+
+	return CENTER;
+}
+
+static void change_program(uint8_t preset_num)
+{
+	for(uint8_t i=0;i<8; ++i)
+	{
+		eeprom_read_block(&(current_program[i].msg),&(presets[preset_num][i]),sizeof(MIDI_Msg));
+		current_program[i].usb_header = current_program[i].msg.header>>4;
+	}
+
+	uint16_t mode_storage;
+	eeprom_read_block(&mode_storage,&mode_eep,sizeof(mode_eep));
+	mode = mode_storage & (1<<preset_num);
+}
+
+void usbFunctionWriteOut(uint8_t *data, uint8_t len)
 {
 	static MIDI_Msg *message_ptr = &(presets[0][0]);
 
@@ -304,107 +280,5 @@ void usbFunctionWriteOut(uint8_t * data, uint8_t len)
 		eeprom_update_byte(&joystick_range, midi_value);
 		break;
 #endif
-	}
-}
-
-uint8_t get_pos(void)
-{
-	static uint8_t range = 0;
-	if(0==range)
-		range = eeprom_read_byte(&joystick_range);
-	ADMUX = _BV(ADLAR) | _BV(MUX1) | _BV(MUX0); //select reading from PB3
-	ADCSRA |= _BV(ADSC) | _BV(ADIF); //clear interrupt flag and start conversion
-	while( !(ADCSRA & _BV(ADIF)) ) //busy loop waiting for conversion to finish
-		;
-	if(ADCH<128-range)
-		return UP;
-	if(ADCH>128+range)
-		return DOWN;
-
-	ADMUX = _BV(ADLAR) | _BV(MUX1); //select reading from PB4
-	ADCSRA |= (1<<ADSC) | (1<< ADIF); //clear interrupt flag and start conversion
-	while(!(ADCSRA & (1<<ADIF))) //busy loop waiting for conversion to finish
-		;
-	if(ADCH<128-range)
-		return RIGHT;
-	if(ADCH>128+range)
-		return LEFT;
-	return CENTER;
-}
-
-int main(void)
-{
-	wdt_disable();
-
-	usbDeviceDisconnect();
-	for(uint8_t i=0;i<250;i++)
-		_delay_ms(2);
-	usbDeviceConnect();
-	
-
-	usbInit();
-	sei();
-	ADCSRA = _BV(ADEN) | _BV(ADPS2) | _BV(ADPS1); //enable ADC and set prescaler to divide by 64
-
-	uint8_t last_pos = get_pos();
-	switch(last_pos)
-	{
-	case CENTER:
-		change_program(0);
-		break;
-	case UP:
-		change_program(1);
-		break;
-	case DOWN:
-		change_program(2);
-		break;
-	case LEFT:
-		change_program(3);
-		break;
-	case RIGHT:
-		change_program(4);
-		break;
-	}
-
-	uint8_t prog=eeprom_read_byte(&prog_start);
-
-	for(;;)
-	{
-		_Bool main_mode = mode;	
-		usbPoll();
-		if(usbInterruptIsReady())
-		{
-			uint8_t pos = get_pos();
-			if(pos != last_pos)
-			{
-				uint8_t move = (0x4&pos) | (0x3&(pos|last_pos));
-				/*if(last_pos)
-					move=last_pos+3;
-				else
-					move=pos-1;*/
-				last_pos = pos;
-				if(main_mode==0||move&2)
-				{
-					if(current_program[move].usb_header != 0)
-					{
-						usbSetInterrupt((uint8_t *)&(current_program[move]),sizeof(USB_Msg));
-					}
-				}
-				else
-				{
-					if(!(move&4))
-					{
-						if(move)
-							--prog;
-						else
-							++prog;
-						prog&=127;
-						usbSetInterrupt((uint8_t *)&(USB_Msg){.usb_header=0x0C,.msg={.header=0xC0, .arg1=prog, .arg2=0}},sizeof(USB_Msg));
-						
-					}
-				}
-				
-			}
-		}
 	}
 }
