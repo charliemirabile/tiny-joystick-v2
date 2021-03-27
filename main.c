@@ -1,7 +1,3 @@
-/* Mini MIDI Pitchbend Joystick
- * mitxela.com/projects/tiny_joystick
- */
-
 #include <avr/io.h>
 #include <avr/wdt.h>
 #include <avr/eeprom.h>
@@ -15,9 +11,9 @@
 
 typedef struct
 {
-	uchar header;
-	uchar arg1;
-	uchar arg2;
+	uint8_t header;
+	uint8_t arg1;
+	uint8_t arg2;
 }
 MIDI_Msg;
 
@@ -27,7 +23,7 @@ EEMEM Preset presets[16];
 
 typedef struct
 {
-	uchar usb_header;
+	uint8_t usb_header;
 	MIDI_Msg msg;
 }
 USB_Msg;
@@ -35,13 +31,17 @@ USB_Msg;
 
 static EEMEM uint16_t mode_eep = 0;
 
-static USB_Msg current_program[8] = {{.usb_header=0x09,.msg={.header=0x90,.arg1=42,.arg2=42}}};
+static EEMEM uint8_t prog_start = 0;
+
+static EEMEM uint8_t joystick_range = 96;
+
+static USB_Msg current_program[8] = {0};
 
 static _Bool mode = 0;
 
-void change_program(uchar preset_num)
+void change_program(uint8_t preset_num)
 {
-	for(uchar i=0;i<8; ++i)
+	for(uint8_t i=0;i<8; ++i)
 	{
 		eeprom_read_block(&(current_program[i].msg),&(presets[preset_num][i]),sizeof(MIDI_Msg));
 		current_program[i].usb_header = current_program[i].msg.header>>4;
@@ -51,14 +51,26 @@ void change_program(uchar preset_num)
 	mode = mode_storage & (1<<preset_num);
 }
 
-#define MODE_TOGGLE_CODE 15
-#define RUNTIME_TYPE_CONFIG_CODE 16
-#define RUNTIME_ARG1_CONFIG_CODE 24
-#define RUNTIME_ARG2_CONFIG_CODE 32
-#define EEPROM_CONFIG_CODE 40
-#define RUNTIME_MODE_TOGGLE 45
+#define RUNTIME_MODE_TOGGLE 15
 
-void usbFunctionWriteOut(uchar * data, uchar len)
+//NOTE: THIS VALUE SHOULD BE A MULTIPLE OF 8
+#define RUNTIME_TYPE_CONFIG_CODE 16
+
+//NOTE: THIS VALUE SHOULD BE A MULTIPLE OF 8
+#define RUNTIME_ARG1_CONFIG_CODE 24
+
+//NOTE: THIS VALUE SHOULD BE A MULTIPLE OF 8
+#define RUNTIME_ARG2_CONFIG_CODE 32
+
+#define EEPROM_CONFIG_CODE 40
+
+#define MODE_TOGGLE_CODE 45
+
+#define PROG_START_CONFIG 46
+
+#define JOYSTICK_RANGE_CONFIG 47
+
+void usbFunctionWriteOut(uint8_t * data, uint8_t len)
 {
 	static MIDI_Msg *message_ptr = &(presets[0][0]);
 
@@ -77,6 +89,10 @@ void usbFunctionWriteOut(uchar * data, uchar len)
 		return;
 
 	MIDI_Msg *msg = &((USB_Msg*)data)->msg;
+
+	uint8_t prog_index = msg->arg1 & 0x7;
+	uint8_t midi_value = 0x7f & msg->arg2;
+	uint8_t midi_cntrl = 0x80 | midi_value;
 	
 	switch(msg->arg1)
 	{
@@ -102,45 +118,77 @@ void usbFunctionWriteOut(uchar * data, uchar len)
 		message_ptr = &presets[msg->arg2>>3][msg->arg2&0x7];
 		break;
 	case EEPROM_CONFIG_CODE+1:
-		if(msg->arg2>=0x70)
+		if(midi_cntrl>=0x70)
 			eeprom_write_byte(&message_ptr->header,0);
 		else
-			eeprom_write_byte(&message_ptr->header,0x80|msg->arg2);
+			eeprom_write_byte(&message_ptr->header,midi_cntrl);
 		break;
 	case EEPROM_CONFIG_CODE+2:
-		eeprom_write_byte(&message_ptr->arg1,msg->arg2);
+		eeprom_write_byte(&message_ptr->arg1,midi_value);
 		break;
 	case EEPROM_CONFIG_CODE+3:
-		eeprom_write_byte(&message_ptr->arg2,msg->arg2);
+		eeprom_write_byte(&message_ptr->arg2,midi_value);
 		break;
 #endif
 
 #ifdef RUNTIME_ARG1_CONFIG_CODE
-	case RUNTIME_ARG1_CONFIG_CODE ... RUNTIME_ARG1_CONFIG_CODE+7:
-		current_program[msg->arg1-RUNTIME_ARG1_CONFIG_CODE].msg.arg1=msg->arg2;
+	case RUNTIME_ARG1_CONFIG_CODE + 0:
+	case RUNTIME_ARG1_CONFIG_CODE + 1:
+	case RUNTIME_ARG1_CONFIG_CODE + 2:
+	case RUNTIME_ARG1_CONFIG_CODE + 3:
+	case RUNTIME_ARG1_CONFIG_CODE + 4:
+	case RUNTIME_ARG1_CONFIG_CODE + 5:
+	case RUNTIME_ARG1_CONFIG_CODE + 6:
+	case RUNTIME_ARG1_CONFIG_CODE + 7:
+		current_program[prog_index].msg.arg1=midi_value;
 		break;
 #endif
 
 #ifdef RUNTIME_ARG2_CONFIG_CODE
-	case RUNTIME_ARG2_CONFIG_CODE ... RUNTIME_ARG2_CONFIG_CODE+7:
-		current_program[msg->arg1-RUNTIME_ARG2_CONFIG_CODE].msg.arg2=msg->arg2;
+	case RUNTIME_ARG2_CONFIG_CODE + 0:
+	case RUNTIME_ARG2_CONFIG_CODE + 1:
+	case RUNTIME_ARG2_CONFIG_CODE + 2:
+	case RUNTIME_ARG2_CONFIG_CODE + 3:
+	case RUNTIME_ARG2_CONFIG_CODE + 4:
+	case RUNTIME_ARG2_CONFIG_CODE + 5:
+	case RUNTIME_ARG2_CONFIG_CODE + 6:
+	case RUNTIME_ARG2_CONFIG_CODE + 7:
+		current_program[prog_index].msg.arg2=midi_value;
 		break;
 #endif
 
 #ifdef RUNTIME_TYPE_CONFIG_CODE
-	case RUNTIME_TYPE_CONFIG_CODE ... RUNTIME_TYPE_CONFIG_CODE+7:
-		if(msg->arg2>=0x70)
+	case RUNTIME_TYPE_CONFIG_CODE + 0:
+	case RUNTIME_TYPE_CONFIG_CODE + 1:
+	case RUNTIME_TYPE_CONFIG_CODE + 2:
+	case RUNTIME_TYPE_CONFIG_CODE + 3:
+	case RUNTIME_TYPE_CONFIG_CODE + 4:
+	case RUNTIME_TYPE_CONFIG_CODE + 5:
+	case RUNTIME_TYPE_CONFIG_CODE + 6:
+	case RUNTIME_TYPE_CONFIG_CODE + 7:
+		if(midi_cntrl>=0x70)
 		{
-			current_program[msg->arg1-RUNTIME_TYPE_CONFIG_CODE].usb_header=0;
+			current_program[prog_index].usb_header=0;
 		}
 		else
 		{
-			current_program[msg->arg1-RUNTIME_TYPE_CONFIG_CODE].msg.header=0x80|msg->arg2;
-			current_program[msg->arg1-RUNTIME_TYPE_CONFIG_CODE].usb_header=(0x80|msg->arg2)>>4;
+			current_program[prog_index].msg.header=midi_cntrl;
+			current_program[prog_index].usb_header=midi_cntrl>>4;
 		}
 		break;
 #endif
-		
+
+#ifdef PROG_START_CONFIG
+	case PROG_START_CONFIG:
+		eeprom_update_byte(&prog_start,midi_value);
+		break;
+#endif
+
+#ifdef JOYSTICK_RANGE_CONFIG
+	case JOYSTICK_RANGE_CONFIG:
+		eeprom_update_byte(&joystick_range, midi_value);
+		break;
+#endif
 	}
 }
 
@@ -154,55 +202,46 @@ typedef enum
 }
 Position;
 
-uchar get_pos(void)
+uint8_t get_pos(void)
 {
-	ADMUX = (1<<ADLAR) | 0b11; //select reading from PB3
-
-	ADCSRA |= (1<<ADSC) | (1 << ADIF); //clear interrupt flag and start conversion
-
-	while(!(ADCSRA & (1<<ADIF))) //busy loop waiting for conversion to finish
+	static uint8_t range = 0;
+	if(0==range)
+		range = eeprom_read_byte(&joystick_range);
+	ADMUX = _BV(ADLAR) | _BV(MUX1) | _BV(MUX0); //select reading from PB3
+	ADCSRA |= _BV(ADSC) | _BV(ADIF); //clear interrupt flag and start conversion
+	while( !(ADCSRA & _BV(ADIF)) ) //busy loop waiting for conversion to finish
 		;
-
-	if(ADCH<32)
+	if(ADCH<128-range)
 		return UP;
-
-	if(ADCH>224)
+	if(ADCH>128+range)
 		return DOWN;
 
-	ADMUX = (1<<ADLAR) | 0b10; //select reading from PB4
-
+	ADMUX = _BV(ADLAR) | _BV(MUX1); //select reading from PB4
 	ADCSRA |= (1<<ADSC) | (1<< ADIF); //clear interrupt flag and start conversion
-
 	while(!(ADCSRA & (1<<ADIF))) //busy loop waiting for conversion to finish
 		;
-
-	if(ADCH<32)
-		return LEFT;
-
-	if(ADCH>224)
+	if(ADCH<128-range)
 		return RIGHT;
-
+	if(ADCH>128+range)
+		return LEFT;
 	return CENTER;
 }
 
-void main(void)
+int main(void)
 {
 	wdt_disable();
 
 	usbDeviceDisconnect();
-	for(uchar i=0;i<250;i++)
-	{
-		//wdt_reset();
+	for(uint8_t i=0;i<250;i++)
 		_delay_ms(2);
-	}
 	usbDeviceConnect();
 	
 
 	usbInit();
 	sei();
-	ADCSRA = 1 << ADEN | 0b110; //enable ADC and set prescaler to 6 (divide by 64)
+	ADCSRA = _BV(ADEN) | _BV(ADPS2) | _BV(ADPS1); //enable ADC and set prescaler to divide by 64
 
-	uchar last_pos = CENTER;/*get_pos();
+	uint8_t last_pos = get_pos();
 	switch(last_pos)
 	{
 	case CENTER:
@@ -220,11 +259,9 @@ void main(void)
 	case RIGHT:
 		change_program(4);
 		break;
-	}*/
+	}
 
-	uchar prog=0;
-
-	uchar send_bytes[4];
+	uint8_t prog=eeprom_read_byte(&prog_start);
 
 	for(;;)
 	{
@@ -232,10 +269,10 @@ void main(void)
 		usbPoll();
 		if(usbInterruptIsReady())
 		{
-			uchar pos = get_pos();
+			uint8_t pos = get_pos();
 			if(pos != last_pos)
 			{
-				uchar move;
+				uint8_t move;
 				if(last_pos)
 					move=last_pos+3;
 				else
@@ -245,9 +282,7 @@ void main(void)
 				{
 					if(current_program[move].usb_header != 0)
 					{
-						memcpy(send_bytes,&(current_program[move]),sizeof(USB_Msg));
-						usbSetInterrupt(send_bytes,sizeof(send_bytes));
-						//usbSetInterrupt((uchar *)&(current_program[move]),sizeof(USB_Msg));
+						usbSetInterrupt((uint8_t *)&(current_program[move]),sizeof(USB_Msg));
 					}
 				}
 				else
@@ -259,9 +294,7 @@ void main(void)
 						else
 							++prog;
 						prog&=127;
-						memcpy(send_bytes,&(USB_Msg){.usb_header=0x0C,.msg={.header=0xC0, .arg1=prog, .arg2=0}},sizeof(USB_Msg));
-						usbSetInterrupt(send_bytes,sizeof(send_bytes));
-						//usbSetInterrupt((uchar *)&(USB_Msg){.usb_header=0x0C,.msg={.header=0xC0, .arg1=prog, .arg2=0}},sizeof(USB_Msg));
+						usbSetInterrupt((uint8_t *)&(USB_Msg){.usb_header=0x0C,.msg={.header=0xC0, .arg1=prog, .arg2=0}},sizeof(USB_Msg));
 						
 					}
 				}
