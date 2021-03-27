@@ -64,11 +64,13 @@ void change_program(uint8_t preset_num)
 
 #define EEPROM_CONFIG_CODE 40
 
-#define MODE_TOGGLE_CODE 44
+#define CHNG_MODE_ENABLE_CODE 44
 
-#define PROG_START_CONFIG 45
+#define CHNG_MODE_DISABLE_CODE 45
 
-#define JOYSTICK_RANGE_CONFIG 46
+#define PROG_START_CONFIG 46
+
+#define JOYSTICK_RANGE_CONFIG 47
 
 void usbFunctionWriteOut(uint8_t * data, uint8_t len)
 {
@@ -96,12 +98,23 @@ void usbFunctionWriteOut(uint8_t * data, uint8_t len)
 	
 	switch(msg->arg1)
 	{
-#ifdef MODE_TOGGLE_CODE
-	case MODE_TOGGLE_CODE:
+#ifdef CHNG_MODE_ENABLE_CODE
+	case CHNG_MODE_ENABLE_CODE:
 		{
 			uint16_t mode_storage;
 			eeprom_read_block(&mode_storage,&mode_eep,sizeof(mode_eep));
-			mode_storage ^= _BV(midi_value&0xf);
+			mode_storage |= _BV(midi_value&0xf);
+			eeprom_update_block(&mode_storage,&mode_eep,sizeof(mode_storage));
+		}
+		break;
+#endif
+
+#ifdef CHNG_MODE_DISABLE_CODE
+	case CHNG_MODE_DISABLE_CODE:
+		{
+			uint16_t mode_storage;
+			eeprom_read_block(&mode_storage,&mode_eep,sizeof(mode_eep));
+			mode_storage &= ~(_BV(midi_value&0xf));
 			eeprom_update_block(&mode_storage,&mode_eep,sizeof(mode_storage));
 		}
 		break;
