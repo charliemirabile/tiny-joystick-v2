@@ -377,7 +377,7 @@ int main(void)
 			uint8_t pos = get_pos();
 			if(pos != last_pos)
 			{
-				uint8_t move = (0x4&last_pos) | (0x3&pos);
+				uint8_t move = (0x4&pos) | (0x3&(pos|last_pos));
 				/*if(last_pos)
 					move=last_pos+3;
 				else
