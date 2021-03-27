@@ -9,6 +9,16 @@
 
 #include "usbdrv/usbdrv.h"
 
+typedef enum
+{
+	UP,
+	DOWN,
+	LEFT,
+	RIGHT,
+	CENTER,
+}
+Position;
+
 typedef struct
 {
 	uint8_t header;
@@ -205,16 +215,6 @@ void usbFunctionWriteOut(uint8_t * data, uint8_t len)
 	}
 }
 
-typedef enum
-{
-	CENTER,
-	UP,
-	DOWN,
-	LEFT,
-	RIGHT,
-}
-Position;
-
 uint8_t get_pos(void)
 {
 	static uint8_t range = 0;
@@ -285,11 +285,11 @@ int main(void)
 			uint8_t pos = get_pos();
 			if(pos != last_pos)
 			{
-				uint8_t move;
-				if(last_pos)
+				uint8_t move = (0x4&last_pos) | (0x3&pos);
+				/*if(last_pos)
 					move=last_pos+3;
 				else
-					move=pos-1;
+					move=pos-1;*/
 				last_pos = pos;
 				if(main_mode==0||move&2)
 				{
