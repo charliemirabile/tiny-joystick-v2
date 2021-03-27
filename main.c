@@ -107,12 +107,6 @@ void usbFunctionWriteOut(uint8_t * data, uint8_t len)
 		break;
 #endif
 
-#ifdef RUNTIME_MODE_TOGGLE
-	case RUNTIME_MODE_TOGGLE:
-		mode = !mode;
-		break;
-#endif
-
 #ifdef EEPROM_CONFIG_CODE
 	case EEPROM_CONFIG_CODE+0:
 		message_ptr = &presets[msg->arg2>>3][msg->arg2&0x7];
@@ -175,6 +169,12 @@ void usbFunctionWriteOut(uint8_t * data, uint8_t len)
 			current_program[prog_index].msg.header=midi_cntrl;
 			current_program[prog_index].usb_header=midi_cntrl>>4;
 		}
+		break;
+#endif
+
+#ifdef RUNTIME_MODE_TOGGLE
+	case RUNTIME_MODE_TOGGLE:
+		mode = !mode;
 		break;
 #endif
 
