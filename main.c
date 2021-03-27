@@ -118,7 +118,7 @@ void usbFunctionWriteOut(uint8_t * data, uint8_t len)
 		message_ptr = &presets[msg->arg2>>3][msg->arg2&0x7];
 		break;
 	case EEPROM_CONFIG_CODE+1:
-		if(midi_cntrl>=0x70)
+		if(midi_cntrl>=0xf0)
 			eeprom_write_byte(&message_ptr->header,0);
 		else
 			eeprom_write_byte(&message_ptr->header,midi_cntrl);
