@@ -64,11 +64,11 @@ void change_program(uint8_t preset_num)
 
 #define EEPROM_CONFIG_CODE 40
 
-#define MODE_TOGGLE_CODE 45
+#define MODE_TOGGLE_CODE 44
 
-#define PROG_START_CONFIG 46
+#define PROG_START_CONFIG 45
 
-#define JOYSTICK_RANGE_CONFIG 47
+#define JOYSTICK_RANGE_CONFIG 46
 
 void usbFunctionWriteOut(uint8_t * data, uint8_t len)
 {
