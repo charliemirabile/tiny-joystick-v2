@@ -101,7 +101,7 @@ void usbFunctionWriteOut(uint8_t * data, uint8_t len)
 		{
 			uint16_t mode_storage;
 			eeprom_read_block(&mode_storage,&mode_eep,sizeof(mode_eep));
-			mode_storage ^= 1 << (msg->arg2&0xf);
+			mode_storage ^= _BV(midi_value&0xf);
 			eeprom_update_block(&mode_storage,&mode_eep,sizeof(mode_storage));
 		}
 		break;
