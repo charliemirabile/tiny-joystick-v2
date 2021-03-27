@@ -29,7 +29,99 @@ MIDI_Msg;
 
 typedef MIDI_Msg Preset[8];
 
-EEMEM Preset presets[16];
+#define PITCH_BEND 0xe0
+#define CONTROLLER_CODE 0xb0
+
+
+EEMEM Preset presets[16] =
+{
+	[0] =
+	{
+		[UP] 		= {.header = PITCH_BEND, .arg1 = 0x55, .arg2 = 0x6a},
+		[DOWN]		= {.header = PITCH_BEND, .arg1 = 0x00, .arg2 = 0x00},
+		[LEFT]		= {.header = PITCH_BEND, .arg1 = 0x2b, .arg2 = 0x15},
+		[RIGHT]		= {.header = PITCH_BEND, .arg1 = 0x55, .arg2 = 0x2a},
+		[CENTER|UP]	= {.header = PITCH_BEND, .arg1 = 0x00, .arg2 = 0x40},
+		[CENTER|DOWN]	= {.header = PITCH_BEND, .arg1 = 0x00, .arg2 = 0x40},
+		[CENTER|LEFT]	= {.header = PITCH_BEND, .arg1 = 0x00, .arg2 = 0x40},
+		[CENTER|RIGHT]	= {.header = PITCH_BEND, .arg1 = 0x00, .arg2 = 0x40},
+	},
+
+	[1] =
+	{
+		{0}
+	},
+
+	[2] =
+	{
+		{0}
+	},
+
+	[3] =
+	{
+		{0}
+	},
+
+	[4] =
+	{
+		{0}
+	},
+
+	[5] =
+	{
+		{0}
+	},
+
+	[6] =
+	{
+		{0}
+	},
+
+	[7] =
+	{
+		{0}
+	},
+
+	[8] =
+	{
+		{0}
+	},
+
+	[9] =
+	{
+		{0}
+	},
+
+	[10] =
+	{
+		{0}
+	},
+
+	[11] =
+	{
+		{0}
+	},
+
+	[12] =
+	{
+		{0}
+	},
+
+	[13] =
+	{
+		{0}
+	},
+
+	[14] =
+	{
+		{0}
+	},
+
+	[15] =
+	{
+		{0}
+	},
+};
 
 typedef struct
 {
