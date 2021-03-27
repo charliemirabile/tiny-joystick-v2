@@ -8,7 +8,7 @@ ASFLAGS = $(CFLAGS)
 AVRDUDE = avrdude
 AVRFLAGS = -c $(PROGRAMMER) -p $(DEVICE) -B10
 
-OBJS = main.o usbconfig.o usbdrv/usbdrv.o usbdrv/usbdrvasm.o
+OBJS = main.o eeprom.o usbconfig.o usbdrv/usbdrv.o usbdrv/usbdrvasm.o
 
 .PHONY: all program fuses flash eeprom dump clean
 
