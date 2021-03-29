@@ -5,7 +5,7 @@ EEMEM uint16_t mode_eep = 0;
 
 EEMEM uint8_t prog_start = 0;
 
-EEMEM uint8_t joystick_range = 96;
+EEMEM uint8_t joystick_range = 45;
 
 EEMEM Preset presets[16] =
 {
