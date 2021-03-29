@@ -38,5 +38,7 @@ main.eep: main.bin
 main.bin: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
 
+usbdrv/usbdrv.o:usbdrv/usbconfig.h
+
 clean:
 	-rm $(OBJS) main.bin main.hex main.eep
