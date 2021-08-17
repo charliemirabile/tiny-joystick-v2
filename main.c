@@ -95,7 +95,7 @@ int main(void)
 				{
 					if(!(move&CENTER))
 					{
-						prog = 0x7f & (prog + move?-1:1);
+						prog = 0x7f & (prog + (move?-1:1));
 						usbSetInterrupt((uint8_t *)&(USB_Msg){.usb_header=0x0C,.msg={.header=0xC0, .arg1=prog, .arg2=0}},sizeof(USB_Msg));
 					}
 				}
