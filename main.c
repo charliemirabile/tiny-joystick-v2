@@ -251,7 +251,7 @@ void usbFunctionWriteOut(uint8_t *data, uint8_t len)
 	case RUNTIME_TYPE_CONFIG_CODE + 5:
 	case RUNTIME_TYPE_CONFIG_CODE + 6:
 	case RUNTIME_TYPE_CONFIG_CODE + 7:
-		if(midi_cntrl>=0x70)
+		if(midi_cntrl>=0xF0)
 		{
 			current_program[prog_index].usb_header=0;
 		}
